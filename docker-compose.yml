@@ -1,0 +1,56 @@
+services:
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_DATABASE: gitshop
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-supersecretrootpassword}
+      MYSQL_USER: ${DB_USER:-gitshop_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gitshop_password}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - gitshop_net
+
+  backend:
+    build:
+      context: ./backend
+    restart: always
+    environment:
+      DATABASE_URL: mysql+pymysql://gitshop_user:gitshop_password@db:3306/gitshop
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-supersecretrootpassword}
+      DB_USER: ${DB_USER:-gitshop_user}
+      DB_PASSWORD: ${DB_PASSWORD:-gitshop_password}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - db
+    networks:
+      - gitshop_net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - gitshop_net
+
+volumes:
+  db_data:
+
+
+networks:
+  gitshop_net:
+    driver: bridge
